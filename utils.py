@@ -22,29 +22,9 @@ def example_transform(example):
     return example
 
 
-### Rough guidelines --- typos
-# For typos, you can try to simulate nearest keys on the QWERTY keyboard for some of the letter (e.g. vowels)
-# You can randomly select each word with some fixed probability, and replace random letters in that word with one of the
-# nearest keys on the keyboard. You can vary the random probablity or which letters to use to achieve the desired accuracy.
-
-
-### Rough guidelines --- synonym replacement
-# For synonyms, use can rely on wordnet (already imported here). Wordnet (https://www.nltk.org/howto/wordnet.html) includes
-# something called synsets (which stands for synonymous words) and for each of them, lemmas() should give you a possible synonym word.
-# You can randomly select each word with some fixed probability to replace by a synonym.
-
 
 def custom_transform(example):
-    ################################
-    ##### YOUR CODE BEGINGS HERE ###
 
-    # Design and implement the transformation as mentioned in pdf
-    # You are free to implement any transformation but the comments at the top roughly describe
-    # how you could implement two of them --- synonym replacement and typos.
-
-    # You should update example["text"] using your transformation
-
-   
     text = example["text"]
     words = text.split()
 
@@ -77,7 +57,6 @@ def custom_transform(example):
         'z': ['a', 's', 'x']
     }
 
-    # Protect especially sentiment-heavy words so we do not accidentally weaken the label.
     protected_words = {"not", "no", "never"}
 
     def split_punct(token):
@@ -132,21 +111,16 @@ def custom_transform(example):
     for word in words:
         prefix, core, suffix = split_punct(word)
 
-        # Leave punctuation-only or very short tokens untouched.
         if len(core) <= 3 or not any(ch.isalpha() for ch in core):
             new_words.append(word)
             continue
-
-        # Do not modify strong sentiment words.
         if core.lower() in protected_words:
             new_words.append(word)
             continue
 
-        # Light typo probability: only modify a small fraction of words.
         if random.random() < 0.32:
             chars = list(core)
 
-            # Mostly replacement, sometimes swap. No deletion because it is too destructive.
             typo_type = random.choices(
                 population=["replace", "swap", "delete"],
                 weights=[0.6, 0.3, 0.10],
@@ -166,5 +140,4 @@ def custom_transform(example):
 
     example["text"] = " ".join(new_words)
 
-    ##### YOUR CODE ENDS HERE ######
     return example

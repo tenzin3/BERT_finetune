@@ -13,7 +13,6 @@ import argparse
 from utils import *
 import os
 
-# Set seed
 random.seed(0)
 torch.manual_seed(0)
 torch.cuda.manual_seed(0)
@@ -21,12 +20,10 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 
-# Tokenize the input
 def tokenize_function(examples):
     return tokenizer(examples["text"], padding="max_length", truncation=True)
 
 
-# Core training function
 def do_train(args, model, train_dataloader, save_dir="./out"):
     optimizer = AdamW(model.parameters(), lr=args.learning_rate)
     num_epochs = args.num_epochs
@@ -37,13 +34,7 @@ def do_train(args, model, train_dataloader, save_dir="./out"):
     model.train()
     progress_bar = tqdm(range(num_training_steps))
 
-    ################################
-    ##### YOUR CODE BEGINGS HERE ###
 
-    # Implement the training loop --- make sure to use the optimizer and lr_sceduler (learning rate scheduler)
-    # Remember that pytorch uses gradient accumumlation so you need to use zero_grad (https://pytorch.org/tutorials/recipes/recipes/zeroing_out_gradients.html)
-    # You can use progress_bar.update(1) to see the progress during training
-    # You can refer to the pytorch tutorial covered in class for reference
 
     for epoch in range(num_epochs):
         for batch in train_dataloader:
@@ -57,7 +48,6 @@ def do_train(args, model, train_dataloader, save_dir="./out"):
             optimizer.zero_grad()
             progress_bar.update(1)
 
-    ##### YOUR CODE ENDS HERE ######
 
     print("Training completed...")
     print("Saving Model....")
@@ -66,7 +56,6 @@ def do_train(args, model, train_dataloader, save_dir="./out"):
     return
 
 
-# Core evaluation function
 def do_eval(eval_dataloader, output_dir, out_file):
     model = AutoModelForSequenceClassification.from_pretrained(output_dir)
     model.to(device)
@@ -84,7 +73,6 @@ def do_eval(eval_dataloader, output_dir, out_file):
         predictions = torch.argmax(logits, dim=-1)
         metric.add_batch(predictions=predictions, references=batch["labels"])
 
-        # write to output file
         for pred, label in zip(predictions, batch["labels"]):
                 out_file.write(f"{pred.item()}\n")
                 out_file.write(f"{label.item()}\n")
@@ -94,14 +82,8 @@ def do_eval(eval_dataloader, output_dir, out_file):
     return score
 
 
-# Created a dataladoer for the augmented training dataset
 def create_augmented_dataloader(args, dataset):
-    ################################
-    ##### YOUR CODE BEGINGS HERE ###
 
-    # Here, 'dataset' is the original dataset. You should return a dataloader called 'train_dataloader' -- this
-    # dataloader will be for the original training split augmented with 5k random transformed examples from the training set.
-    # You may find it helpful to see how the dataloader was created at other place in this code.
 
     from datasets import concatenate_datasets
     
@@ -118,14 +100,11 @@ def create_augmented_dataloader(args, dataset):
     train_dataloader = DataLoader(tokenized_dataset, shuffle=True, batch_size=args.batch_size)
 
 
-    ##### YOUR CODE ENDS HERE ######
 
     return train_dataloader
 
 
-# Create a dataloader for the transformed test set
 def create_transformed_dataloader(args, dataset, debug_transformation):
-    # Print 5 random transformed examples
     if debug_transformation:
         small_dataset = dataset["test"].shuffle(seed=42).select(range(5))
         small_transformed_dataset = small_dataset.map(custom_transform, load_from_cache_file=False)
@@ -206,31 +185,25 @@ if __name__ == "__main__":
         print(f"len(train_dataloader): {len(train_dataloader)}")
         print(f"len(eval_dataloader): {len(eval_dataloader)}")
 
-    # Train model on the original training dataset
     if args.train:
         model = AutoModelForSequenceClassification.from_pretrained("bert-base-cased", num_labels=2)
         model.to(device)
         do_train(args, model, train_dataloader, save_dir="./out")
-        # Change eval dir
         args.model_dir = "./out"
 
-    # Train model on the augmented training dataset
     if args.train_augmented:
         train_dataloader = create_augmented_dataloader(args, dataset)
         model = AutoModelForSequenceClassification.from_pretrained("bert-base-cased", num_labels=2)
         model.to(device)
         do_train(args, model, train_dataloader, save_dir="./out_augmented")
-        # Change eval dir
         args.model_dir = "./out_augmented"
 
-    # Evaluate the trained model on the original test dataset
     if args.eval:
         out_file = os.path.basename(os.path.normpath(args.model_dir))
         out_file = out_file + "_original.txt"
         score = do_eval(eval_dataloader, args.model_dir, out_file)
         print("Score: ", score)
 
-    # Evaluate the trained model on the transformed test dataset
     if args.eval_transformed:
         out_file = os.path.basename(os.path.normpath(args.model_dir))
         out_file = out_file + "_transformed.txt"
